@@ -1,0 +1,55 @@
+- hosts: 54.64.125.77
+  remote_user: ec2-user
+  sudo: yes
+  tasks:
+  - name: zaromq.repo construct
+    shell: curl http://download.opensuse.org/repositories/home:/fengshuo:/zeromq/CentOS_CentOS-6/home:fengshuo:zeromq.repo > /etc/yum.repos.d/zeromq.repo
+
+  - name: install package
+    yum: pkg={{item}} state=installed
+    with_items:
+      - gcc
+      - gcc-c++
+      - zeromq
+      - zeromq-devel
+      - python-devel
+      - python-setuptools
+
+  - name: epel install
+    command: rpm -ivh http://ftp.riken.jp/Linux/fedora/epel/6/x86_64/epel-release-6-8.noarch.rpm
+
+  - name: epel update
+    command: yum --enablerepo=epel update epel-release
+
+  - name: epel disable
+    lineinfile: dest=/etc/yum.repos.d/epel.repo regexp=^enable line=enable=1   
+
+  - name: pip install
+    command: yum install python-pip -y
+
+  - name: pip install zabbix_api
+    command: pip install apache-libcloud==0.13.2 zabbix-api pyzmq psphere python-daemon==1.6 configobj
+
+  - name: pip install ordereddict
+    command: pip install ordereddict argparse boto
+
+  - name: tornado download
+    command: wget https://github.com/downloads/liftoff/GateOne/tornado-2.4-1.noarch.rpm -P /usr/local/src
+
+  - name: gateone download
+    command: wget https://github.com/downloads/liftoff/GateOne/gateone-1.1-1.noarch.rpm -P /usr/local/src
+
+  - name: install tornado gateone
+    command: rpm -ivh tornado-2.4-1.noarch.rpm gateone-1.1-1.noarch.rpm
+
+  - name: gateone construct
+    command: /opt/gateone/gateone.py --auth=api --origins="http://54.64.153.149"
+
+  - name: gateone key make
+    command: /opt/gateone/gateone.py --new_api_key
+
+  - name: keyfie make
+    command: openssl genrsa -out /opt/gateone/keyfile.pem 2048
+
+  - name: ensure gateone is running and enabled
+    service: name=gateone state=started enabled=yes
